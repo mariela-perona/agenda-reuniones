@@ -668,8 +668,8 @@ function actaTexto(r){
 function compartirActa(id){
   const r=state.reuniones.find(x=>x.id===id); if(!r) return;
   const txt=actaTexto(r);
-  if(navigator.share){ navigator.share({title:`Acta ${r.fecha}`, text:txt}).catch(()=>{}); }
-  else { window.open("https://wa.me/?text="+encodeURIComponent(txt), "_blank"); }
+  // Abre WhatsApp directo: app en el celular, WhatsApp Web en la compu.
+  window.open("https://wa.me/?text="+encodeURIComponent(txt), "_blank");
 }
 
 /* ---------- Cerrar reunión ---------- */
