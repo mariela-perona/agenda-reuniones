@@ -90,6 +90,11 @@
   .filtro-chip.sel{background:var(--brand);color:#fff;border-color:transparent}
   .pdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:middle}
   .pdot.alta{background:var(--alta)} .pdot.media{background:var(--media)} .pdot.baja{background:var(--baja)}
+  .buscar{width:100%;border:1px solid var(--line);border-radius:11px;padding:10px 12px;font-family:inherit;font-size:14px;outline:none;background:rgba(255,255,255,.7);margin-bottom:12px;color:var(--ink)}
+  .buscar:focus{border-color:var(--brand)}
+  .edit{margin-left:auto;font-size:12px;color:var(--brand-dark);cursor:pointer;background:none;border:none;font-family:inherit}
+  .share-btn{display:inline-flex;align-items:center;gap:6px;background:#25d366;color:#fff;border:none;border-radius:11px;padding:10px 15px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:14px;box-shadow:0 2px 7px rgba(37,211,102,.3)}
+  .share-btn:active{transform:scale(.98)}
   .group-label{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin:16px 4px 8px;display:flex;align-items:center;gap:7px;color:var(--muted)}
   .dot{width:9px;height:9px;border-radius:50%}
   .dot.alta{background:var(--alta)} .dot.media{background:var(--media)} .dot.baja{background:var(--baja)}
@@ -233,6 +238,7 @@
       <button class="addbtn" onclick="agregarTema()">Agregar tema</button>
     </div>
 
+    <input id="buscar" class="buscar" type="text" placeholder="🔍 Buscar tema…" oninput="setBusqueda(this.value)">
     <div class="counter" id="counter"></div>
     <div class="filtros" id="filtros"></div>
     <div class="filtros" id="filtrosPrio"></div>
@@ -308,6 +314,7 @@ let animateNext = true;
 let viewActual = "prox";
 let filtroNombre = "";    // filtro por quién propuso el tema
 let filtroPrioridad = ""; // filtro por prioridad
+let busqueda = "";        // búsqueda de texto
 let temasJson = "", reuJson = "";
 let decTimers = {};
 let pendingProxRender = false;
@@ -540,10 +547,12 @@ function render(){
   let temas = todos;
   if(filtroNombre)    temas = temas.filter(t=>t.propuestoPor===filtroNombre);
   if(filtroPrioridad) temas = temas.filter(t=>t.prioridad===filtroPrioridad);
+  const q = busqueda.trim().toLowerCase();
+  if(q) temas = temas.filter(t=>(t.titulo+" "+(t.detalle||"")).toLowerCase().includes(q));
   temas = [...temas];
   if(!temas.length){
     cont.className="";
-    cont.innerHTML = `<div class="empty"><div class="big">🔍</div>No hay temas con ese filtro.</div>`;
+    cont.innerHTML = `<div class="empty"><div class="big">🔍</div>No hay temas que coincidan.</div>`;
     animateNext=false; actualizarCloseBtn(); return;
   }
 
@@ -565,6 +574,7 @@ function render(){
             <div class="meta meta-top">
               <span class="badge ${g}" onclick="ciclarPrioridad('${t.id}')">${NOM_PRIO[g]}</span>
               <span class="by">${t.propuestoPor||"—"}</span>
+              <button class="edit" onclick="editarTema('${t.id}')">editar</button>
               <button class="del" onclick="borrarTema('${t.id}')">borrar</button>
             </div>
             <div class="titulo">${esc(t.titulo)}${t.esSeguimiento?'<span class="segui-badge">📌 seguimiento</span>':''}</div>
@@ -620,6 +630,47 @@ function renderFiltrosPrio(){
   cont.innerHTML = chips;
 }
 function setFiltroPrio(p){ filtroPrioridad=p; animateNext=true; render(); }
+function setBusqueda(v){ busqueda=v; render(); }
+
+/* ---------- Editar tema ---------- */
+function editarTema(id){
+  const t=temaById(id); if(!t) return;
+  document.getElementById("sheetContent").innerHTML=`
+    <h2>Editar tema</h2>
+    <input id="edTit" type="text" value="${esc(t.titulo)}" placeholder="Título del tema" style="font-size:15px;letter-spacing:normal;text-align:left;margin-bottom:10px">
+    <textarea id="edDet" placeholder="Detalle (opcional)" style="width:100%;border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-family:inherit;font-size:14px;resize:none;outline:none;margin-bottom:14px;min-height:72px;background:#fff;color:var(--ink)">${esc(t.detalle||"")}</textarea>
+    <div class="sheet-btns">
+      <button class="btn-ghost" onclick="hideModal()">Cancelar</button>
+      <button class="btn-primary" id="edOk">Guardar</button>
+    </div>`;
+  showModal();
+  setTimeout(()=>document.getElementById("edTit").focus(),100);
+  document.getElementById("edOk").onclick=()=>{
+    const nt=document.getElementById("edTit").value.trim();
+    const nd=document.getElementById("edDet").value.trim();
+    if(!nt){ document.getElementById("edTit").focus(); return; }
+    t.titulo=nt; t.detalle=nd; hideModal(); render();
+    FB.updateDoc(fdoc(COL_TEMAS,id),{titulo:nt,detalle:nd});
+  };
+}
+
+/* ---------- Compartir acta por WhatsApp ---------- */
+function actaTexto(r){
+  let s = `📋 *Acta de reunión · ${r.fecha}*\n\n`;
+  r.temas.forEach((t,i)=>{
+    s += `${i+1}. ${t.titulo} (${NOM_PRIO[t.prioridad]})\n`;
+    s += t.decision ? `   ✅ ${t.decision}\n` : `   ▢ sin nota\n`;
+    (t.subtemas||[]).forEach(st=> s += `      ${st.hecho?'✔':'▢'} ${st.titulo}\n`);
+  });
+  s += `\n— Agenda Naka`;
+  return s;
+}
+function compartirActa(id){
+  const r=state.reuniones.find(x=>x.id===id); if(!r) return;
+  const txt=actaTexto(r);
+  if(navigator.share){ navigator.share({title:`Acta ${r.fecha}`, text:txt}).catch(()=>{}); }
+  else { window.open("https://wa.me/?text="+encodeURIComponent(txt), "_blank"); }
+}
 
 /* ---------- Cerrar reunión ---------- */
 function cerrarReunion(){
@@ -670,7 +721,8 @@ function verReunion(id){
   const c=document.getElementById("histLista"); c.style.display="none";
   const d=document.getElementById("histDetalle"); d.style.display="block";
   d.innerHTML = `<span class="back" onclick="renderHist()">‹ Volver al historial</span>
-    <h2 style="font-size:17px;margin:4px 0 14px">Reunión ${r.fecha}</h2>` +
+    <h2 style="font-size:17px;margin:4px 0 12px">Reunión ${r.fecha}</h2>
+    <button class="share-btn" onclick="compartirActa('${r.id}')">📲 Compartir acta por WhatsApp</button>` +
     r.temas.map(t=>`
       <div class="card ${t.prioridad}">
         <div class="meta meta-top"><span class="badge ${t.prioridad}">${NOM_PRIO[t.prioridad]}</span><span class="by">${t.propuestoPor||"—"}</span></div>
