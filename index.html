@@ -104,6 +104,7 @@
   .detalle-text{font-size:14px;color:#5b6068;margin-top:7px;display:none;white-space:pre-wrap}
   .detalle-text.open{display:block}
   .meta{display:flex;align-items:center;gap:10px;margin-top:9px;flex-wrap:wrap}
+  .meta-top{margin-top:0;margin-bottom:8px}
   .badge{font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;cursor:pointer}
   .badge.alta{background:#fbeaea;color:#b04a4a} .badge.media{background:#f6efe2;color:#9a7530} .badge.baja{background:#e7f1ea;color:#3f7a55}
   .by{font-size:12px;color:var(--muted)}
@@ -539,15 +540,15 @@ function render(){
             <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><path d="M5 12l5 5L20 6"/></svg>
           </div>
           <div style="flex:1">
-            <div class="titulo">${esc(t.titulo)}${t.esSeguimiento?'<span class="segui-badge">📌 seguimiento</span>':''}</div>
-            ${t.detalle?`<span class="vermas" id="ver_${t.id}" onclick="toggleVerMas('${t.id}')">ver más</span>
-              <div class="detalle-text" id="det_${t.id}">${esc(t.detalle)}</div>`:""}
-            ${chainHtml(t)}
-            <div class="meta">
+            <div class="meta meta-top">
               <span class="badge ${g}" onclick="ciclarPrioridad('${t.id}')">${NOM_PRIO[g]}</span>
               <span class="by">${t.propuestoPor||"—"}</span>
               <button class="del" onclick="borrarTema('${t.id}')">borrar</button>
             </div>
+            <div class="titulo">${esc(t.titulo)}${t.esSeguimiento?'<span class="segui-badge">📌 seguimiento</span>':''}</div>
+            ${t.detalle?`<span class="vermas" id="ver_${t.id}" onclick="toggleVerMas('${t.id}')">ver más</span>
+              <div class="detalle-text" id="det_${t.id}">${esc(t.detalle)}</div>`:""}
+            ${chainHtml(t)}
             ${subtemasHtml(t)}
             <textarea class="decision" placeholder="¿Qué se decidió? (se guarda en el acta)"
               oninput="setDecision('${t.id}',this.value)">${esc(t.decision)}</textarea>
@@ -621,10 +622,10 @@ function verReunion(id){
     <h2 style="font-size:17px;margin:4px 0 14px">Reunión ${r.fecha}</h2>` +
     r.temas.map(t=>`
       <div class="card ${t.prioridad}">
+        <div class="meta meta-top"><span class="badge ${t.prioridad}">${NOM_PRIO[t.prioridad]}</span><span class="by">${t.propuestoPor||"—"}</span></div>
         <div class="titulo">${esc(t.titulo)}${t.esSeguimiento?'<span class="segui-badge">📌 seguimiento</span>':''}</div>
         ${t.detalle?`<div class="hist-label">Detalle</div><div class="hist-detalle">${esc(t.detalle)}</div>`:""}
         ${(t.seguimiento&&t.seguimiento.length)?`<div class="chain"><div class="chain-head" style="cursor:default">Historial previo</div><div class="chain-body open">${t.seguimiento.map(s=>`<div class="chain-row"><b>${s.fecha}:</b> ${esc(s.decision)}</div>`).join("")}</div></div>`:""}
-        <div class="meta"><span class="badge ${t.prioridad}">${NOM_PRIO[t.prioridad]}</span><span class="by">${t.propuestoPor||"—"}</span></div>
         ${(t.subtemas&&t.subtemas.length)?`<div class="hist-label">Subtemas</div><div class="subtemas">${t.subtemas.map(s=>`<div class="subtema ${s.hecho?'done':''}"><div class="subcheck ${s.hecho?'on':''}"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><path d="M5 12l5 5L20 6"/></svg></div><span>${esc(s.titulo)}</span></div>`).join("")}</div>`:""}
         <div class="hist-label">¿Qué se decidió?</div>
         ${t.decision?`<div class="hist-decision">${esc(t.decision)}</div>`:`<div class="hist-decision" style="border-color:#ddd;color:#9aa">Sin nota</div>`}
