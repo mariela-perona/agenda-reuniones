@@ -85,6 +85,9 @@
   .lh-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--ink)}
   .lh-title .lh-sep{color:var(--line);font-weight:400;margin:0 3px}
   .lh-prog{font-size:12px;color:var(--muted);font-weight:500;white-space:nowrap}
+  .filtros{display:flex;gap:6px;flex-wrap:wrap;margin:0 4px 12px}
+  .filtro-chip{border:1px solid var(--line);background:rgba(255,255,255,.6);border-radius:20px;padding:5px 12px;font-size:12px;font-family:inherit;cursor:pointer;color:var(--muted);font-weight:500}
+  .filtro-chip.sel{background:var(--brand);color:#fff;border-color:transparent}
   .group-label{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin:16px 4px 8px;display:flex;align-items:center;gap:7px;color:var(--muted)}
   .dot{width:9px;height:9px;border-radius:50%}
   .dot.alta{background:var(--alta)} .dot.media{background:var(--media)} .dot.baja{background:var(--baja)}
@@ -229,6 +232,7 @@
     </div>
 
     <div class="counter" id="counter"></div>
+    <div class="filtros" id="filtros"></div>
     <div id="lista"></div>
   </div>
 
@@ -299,6 +303,7 @@ let state = { temas:[], reuniones:[], fechaReunion:"" };
 let yo = localStorage.getItem("agenda_nombre") || null;
 let animateNext = true;
 let viewActual = "prox";
+let filtroNombre = "";   // filtro de la lista por quién propuso el tema
 let temasJson = "", reuJson = "";
 let decTimers = {};
 let pendingProxRender = false;
@@ -512,16 +517,25 @@ function render(){
   document.getElementById("whoami").innerHTML = yo? `<span>👤</span><b>${yo}</b>` : `<span>👤 Elegir</span>`;
   renderCountdown();
   const cont=document.getElementById("lista");
-  const temas=[...state.temas];
-  const total=temas.length, hechos=temas.filter(t=>t.tratado).length;
+  const todos=state.temas;
+  const total=todos.length, hechos=todos.filter(t=>t.tratado).length;
 
   document.getElementById("counter").innerHTML = total
     ? `<div class="lh-title">Temas cargados <span class="lh-sep">|</span> ${total} ${total!=1?"temas":"tema"} a tratar</div><div class="lh-prog">${hechos} de ${total} tratado${hechos!=1?"s":""}</div>`
     : "";
 
+  renderFiltros();
+
   if(!total){
     cont.className="";
     cont.innerHTML = `<div class="empty"><div class="big">📝</div>No hay temas todavía.<br>Agregá el primero arriba.</div>`;
+    animateNext=false; actualizarCloseBtn(); return;
+  }
+
+  const temas = filtroNombre ? todos.filter(t=>t.propuestoPor===filtroNombre) : [...todos];
+  if(!temas.length){
+    cont.className="";
+    cont.innerHTML = `<div class="empty"><div class="big">🔍</div>No hay temas cargados por ${esc(filtroNombre)}.</div>`;
     animateNext=false; actualizarCloseBtn(); return;
   }
 
@@ -569,6 +583,21 @@ function actualizarCloseBtn(){
   btn.disabled = hechos===0;
   btn.textContent = hechos? `Cerrar reunión y archivar (${hechos})` : "Cerrar reunión y archivar";
 }
+
+/* ---------- Filtro por nombre ---------- */
+function renderFiltros(){
+  const cont=document.getElementById("filtros");
+  if(!cont) return;
+  if(!state.temas.length){ cont.innerHTML=""; return; }
+  let chips = `<button class="filtro-chip ${!filtroNombre?'sel':''}" onclick="setFiltro('')">Todos</button>`;
+  NOMBRES.forEach(n=>{
+    const cnt = state.temas.filter(t=>t.propuestoPor===n).length;
+    if(!cnt) return;
+    chips += `<button class="filtro-chip ${filtroNombre===n?'sel':''}" onclick="setFiltro('${n}')">${n} (${cnt})</button>`;
+  });
+  cont.innerHTML = chips;
+}
+function setFiltro(n){ filtroNombre=n; animateNext=true; render(); }
 
 /* ---------- Cerrar reunión ---------- */
 function cerrarReunion(){
