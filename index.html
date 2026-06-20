@@ -92,6 +92,13 @@
   .pdot.alta{background:var(--alta)} .pdot.media{background:var(--media)} .pdot.baja{background:var(--baja)}
   .buscar{width:100%;border:1px solid var(--line);border-radius:11px;padding:10px 12px;font-family:inherit;font-size:14px;outline:none;background:rgba(255,255,255,.7);margin-bottom:12px;color:var(--ink)}
   .buscar:focus{border-color:var(--brand)}
+  .toolbar{display:flex;gap:8px;align-items:center;margin-bottom:12px}
+  .toolbar .buscar{flex:1;width:auto;margin-bottom:0}
+  .meta-row{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:0 4px 10px}
+  .meta-count{font-size:12px;color:var(--muted);font-weight:500}
+  .btn-filtros{display:inline-flex;align-items:center;gap:5px;font-family:inherit;font-size:12px;font-weight:500;color:var(--muted);background:rgba(255,255,255,.6);border:1px solid var(--line);border-radius:20px;padding:5px 12px;cursor:pointer;white-space:nowrap}
+  .btn-filtros.on{background:var(--brand);color:#fff;border-color:transparent}
+  .filtros-wrap{margin-bottom:4px}
   .edit{margin-left:auto;font-size:12px;color:var(--brand-dark);cursor:pointer;background:none;border:none;font-family:inherit}
   .share-btn{display:inline-flex;align-items:center;gap:6px;background:#25d366;color:#fff;border:none;border-radius:11px;padding:10px 15px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:14px;box-shadow:0 2px 7px rgba(37,211,102,.3)}
   .share-btn:active{transform:scale(.98)}
@@ -251,11 +258,15 @@
       <button class="addbtn" onclick="agregarTema()">Agregar tema</button>
     </div>
 
-    <input id="buscar" class="buscar" type="text" placeholder="🔍 Buscar tema…" oninput="setBusqueda(this.value)">
-    <div class="counter" id="counter"></div>
-    <div class="vista-toggle" id="vistaToggle"></div>
-    <div class="filtros" id="filtros"></div>
-    <div class="filtros" id="filtrosPrio"></div>
+    <div class="toolbar">
+      <input id="buscar" class="buscar" type="text" placeholder="🔍 Buscar tema…" oninput="setBusqueda(this.value)">
+      <div id="vistaToggle"></div>
+    </div>
+    <div class="meta-row" id="counter"></div>
+    <div class="filtros-wrap" id="filtrosWrap" style="display:none">
+      <div class="filtros" id="filtros"></div>
+      <div class="filtros" id="filtrosPrio"></div>
+    </div>
     <div id="lista"></div>
   </div>
 
@@ -330,6 +341,7 @@ let filtroNombre = "";    // filtro por quién propuso el tema
 let filtroPrioridad = ""; // filtro por prioridad
 let busqueda = "";        // búsqueda de texto
 let vistaModo = localStorage.getItem("agenda_vista") || "lista";  // "lista" | "tablero"
+let filtrosAbiertos = false;  // panel de filtros plegable
 let temasJson = "", reuJson = "";
 let decTimers = {};
 let pendingProxRender = false;
@@ -546,13 +558,15 @@ function render(){
   const todos=state.temas;
   const total=todos.length, hechos=todos.filter(t=>t.tratado).length;
 
+  const nFilt = (filtroNombre?1:0)+(filtroPrioridad?1:0);
   document.getElementById("counter").innerHTML = total
-    ? `<div class="lh-title">Temas cargados <span class="lh-sep">|</span> ${total} ${total!=1?"temas":"tema"} a tratar</div><div class="lh-prog">${hechos} de ${total} tratado${hechos!=1?"s":""}</div>`
+    ? `<span class="meta-count">${total} tema${total!=1?"s":""} · ${hechos} tratado${hechos!=1?"s":""}</span><button class="btn-filtros ${nFilt?'on':''}" onclick="toggleFiltros()">Filtros${nFilt?` (${nFilt})`:""} ${filtrosAbiertos?"▴":"▾"}</button>`
     : "";
 
   renderFiltros();
   renderFiltrosPrio();
   renderVistaToggle();
+  document.getElementById("filtrosWrap").style.display = (total && filtrosAbiertos) ? "block" : "none";
 
   if(!total){
     cont.className="";
@@ -651,6 +665,7 @@ function renderVistaToggle(){
   </div>`;
 }
 function setVista(m){ vistaModo=m; localStorage.setItem("agenda_vista",m); animateNext=true; render(); }
+function toggleFiltros(){ filtrosAbiertos=!filtrosAbiertos; render(); }
 
 /* ---------- HTML de una tarjeta (reutilizable en lista y tablero) ---------- */
 function cardHtml(t, idx){
