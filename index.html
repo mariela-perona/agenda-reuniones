@@ -95,6 +95,19 @@
   .edit{margin-left:auto;font-size:12px;color:var(--brand-dark);cursor:pointer;background:none;border:none;font-family:inherit}
   .share-btn{display:inline-flex;align-items:center;gap:6px;background:#25d366;color:#fff;border:none;border-radius:11px;padding:10px 15px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:14px;box-shadow:0 2px 7px rgba(37,211,102,.3)}
   .share-btn:active{transform:scale(.98)}
+  .vista-toggle{display:flex;justify-content:flex-end;margin:0 4px 12px}
+  .vista-seg{display:flex;gap:3px;background:#e3e6ea;border-radius:9px;padding:3px}
+  .vista-seg button{border:none;background:none;font-family:inherit;font-size:12px;padding:5px 13px;border-radius:7px;color:var(--muted);cursor:pointer;font-weight:500}
+  .vista-seg button.sel{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+  #lista.tablero{display:grid;grid-template-columns:repeat(3,minmax(228px,1fr));gap:12px;align-items:start;overflow-x:auto;padding-bottom:6px}
+  .board-col{background:rgba(255,255,255,.32);border:1px solid var(--glass-line);border-radius:14px;padding:10px;min-width:0}
+  .board-col-head{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);display:flex;align-items:center;gap:7px;margin:2px 2px 10px}
+  .board-col-n{margin-left:auto;background:#e3e6ea;color:#5b6470;border-radius:20px;padding:1px 9px;font-size:11px}
+  .board-empty{font-size:12px;color:#b9bec5;text-align:center;padding:18px 0}
+  #lista.tablero .card{margin-bottom:10px}
+  @media(min-width:780px){
+    #lista.tablero{position:relative;left:50%;transform:translateX(-50%);width:min(94vw,1060px)}
+  }
   .group-label{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin:16px 4px 8px;display:flex;align-items:center;gap:7px;color:var(--muted)}
   .dot{width:9px;height:9px;border-radius:50%}
   .dot.alta{background:var(--alta)} .dot.media{background:var(--media)} .dot.baja{background:var(--baja)}
@@ -240,6 +253,7 @@
 
     <input id="buscar" class="buscar" type="text" placeholder="🔍 Buscar tema…" oninput="setBusqueda(this.value)">
     <div class="counter" id="counter"></div>
+    <div class="vista-toggle" id="vistaToggle"></div>
     <div class="filtros" id="filtros"></div>
     <div class="filtros" id="filtrosPrio"></div>
     <div id="lista"></div>
@@ -315,6 +329,7 @@ let viewActual = "prox";
 let filtroNombre = "";    // filtro por quién propuso el tema
 let filtroPrioridad = ""; // filtro por prioridad
 let busqueda = "";        // búsqueda de texto
+let vistaModo = localStorage.getItem("agenda_vista") || "lista";  // "lista" | "tablero"
 let temasJson = "", reuJson = "";
 let decTimers = {};
 let pendingProxRender = false;
@@ -537,6 +552,7 @@ function render(){
 
   renderFiltros();
   renderFiltrosPrio();
+  renderVistaToggle();
 
   if(!total){
     cont.className="";
@@ -557,38 +573,30 @@ function render(){
   }
 
   const grupos=["alta","media","baja"];
-  let html="", idx=0;
+  let idx=0;
+
+  if(vistaModo==="tablero"){
+    let html="";
+    grupos.forEach(g=>{
+      const items = temas.filter(t=>t.prioridad===g)
+        .sort((a,b)=> (a.tratado-b.tratado) || (a.creadoEn-b.creadoEn));
+      html += `<div class="board-col">
+        <div class="board-col-head"><span class="dot ${g}"></span>${NOM_PRIO[g]}<span class="board-col-n">${items.length}</span></div>
+        ${items.length ? items.map(t=>cardHtml(t, idx++)).join("") : `<div class="board-empty">—</div>`}
+      </div>`;
+    });
+    cont.className = "tablero" + (animateNext?" lista-anim":"");
+    cont.innerHTML = html;
+    animateNext=false; actualizarCloseBtn(); return;
+  }
+
+  let html="";
   grupos.forEach(g=>{
     const items = temas.filter(t=>t.prioridad===g)
       .sort((a,b)=> (a.tratado-b.tratado) || (a.creadoEn-b.creadoEn));
     if(!items.length) return;
     html += `<div class="group-label"><span class="dot ${g}"></span>${NOM_PRIO[g]}</div>`;
-    items.forEach(t=>{
-      html += `
-      <div class="card ${g} ${t.tratado?'done':''}" style="animation-delay:${Math.min(idx++,10)*40}ms">
-        <div class="card-top">
-          <div class="check ${t.tratado?'on':''}" id="chk_${t.id}" onclick="toggleTratado('${t.id}')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><path d="M5 12l5 5L20 6"/></svg>
-          </div>
-          <div style="flex:1">
-            <div class="meta meta-top">
-              <span class="badge ${g}" onclick="ciclarPrioridad('${t.id}')">${NOM_PRIO[g]}</span>
-              <span class="by">${t.propuestoPor||"—"}</span>
-              <button class="edit" onclick="editarTema('${t.id}')">editar</button>
-              <button class="del" onclick="borrarTema('${t.id}')">borrar</button>
-            </div>
-            <div class="titulo">${esc(t.titulo)}${t.esSeguimiento?'<span class="segui-badge">📌 seguimiento</span>':''}</div>
-            ${t.detalle?`<span class="vermas" id="ver_${t.id}" onclick="toggleVerMas('${t.id}')">ver más</span>
-              <div class="detalle-text" id="det_${t.id}">${esc(t.detalle)}</div>`:""}
-            ${chainHtml(t)}
-            ${subtemasHtml(t)}
-            <textarea class="decision" placeholder="¿Qué se decidió? (se guarda en el acta)"
-              oninput="setDecision('${t.id}',this.value)">${esc(t.decision)}</textarea>
-            ${t.tratado?`<button class="segui-btn ${t.seguido?'done-state':''}" onclick="${t.seguido?'':`hacerSeguimiento('${t.id}')`}">${t.seguido?'✓ Pasado a la próxima reunión':'↻ Hacer seguimiento →'}</button>`:''}
-          </div>
-        </div>
-      </div>`;
-    });
+    items.forEach(t=> html += cardHtml(t, idx++));
   });
   cont.className = animateNext ? "lista-anim" : "";
   cont.innerHTML=html;
@@ -632,6 +640,47 @@ function renderFiltrosPrio(){
 function setFiltroPrio(p){ filtroPrioridad=p; animateNext=true; render(); }
 function setBusqueda(v){ busqueda=v; render(); }
 
+/* ---------- Vista Lista / Tablero ---------- */
+function renderVistaToggle(){
+  const c=document.getElementById("vistaToggle");
+  if(!c) return;
+  if(!state.temas.length){ c.innerHTML=""; return; }
+  c.innerHTML = `<div class="vista-seg">
+    <button class="${vistaModo==='lista'?'sel':''}" onclick="setVista('lista')">Lista</button>
+    <button class="${vistaModo==='tablero'?'sel':''}" onclick="setVista('tablero')">Tablero</button>
+  </div>`;
+}
+function setVista(m){ vistaModo=m; localStorage.setItem("agenda_vista",m); animateNext=true; render(); }
+
+/* ---------- HTML de una tarjeta (reutilizable en lista y tablero) ---------- */
+function cardHtml(t, idx){
+  const g=t.prioridad;
+  return `
+      <div class="card ${g} ${t.tratado?'done':''}" style="animation-delay:${Math.min(idx,10)*40}ms">
+        <div class="card-top">
+          <div class="check ${t.tratado?'on':''}" id="chk_${t.id}" onclick="toggleTratado('${t.id}')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><path d="M5 12l5 5L20 6"/></svg>
+          </div>
+          <div style="flex:1">
+            <div class="meta meta-top">
+              <span class="badge ${g}" onclick="ciclarPrioridad('${t.id}')">${NOM_PRIO[g]}</span>
+              <span class="by">${t.propuestoPor||"—"}</span>
+              <button class="edit" onclick="editarTema('${t.id}')">editar</button>
+              <button class="del" onclick="borrarTema('${t.id}')">borrar</button>
+            </div>
+            <div class="titulo">${esc(t.titulo)}${t.esSeguimiento?'<span class="segui-badge">📌 seguimiento</span>':''}</div>
+            ${t.detalle?`<span class="vermas" id="ver_${t.id}" onclick="toggleVerMas('${t.id}')">ver más</span>
+              <div class="detalle-text" id="det_${t.id}">${esc(t.detalle)}</div>`:""}
+            ${chainHtml(t)}
+            ${subtemasHtml(t)}
+            <textarea class="decision" placeholder="¿Qué se decidió? (se guarda en el acta)"
+              oninput="setDecision('${t.id}',this.value)">${esc(t.decision)}</textarea>
+            ${t.tratado?`<button class="segui-btn ${t.seguido?'done-state':''}" onclick="${t.seguido?'':`hacerSeguimiento('${t.id}')`}">${t.seguido?'✓ Pasado a la próxima reunión':'↻ Hacer seguimiento →'}</button>`:''}
+          </div>
+        </div>
+      </div>`;
+}
+
 /* ---------- Editar tema ---------- */
 function editarTema(id){
   const t=temaById(id); if(!t) return;
@@ -656,13 +705,13 @@ function editarTema(id){
 
 /* ---------- Compartir acta por WhatsApp ---------- */
 function actaTexto(r){
-  let s = `📋 *Acta de reunión · ${r.fecha}*\n\n`;
+  let s = `*Acta de reunion - ${r.fecha}*\n\n`;
   r.temas.forEach((t,i)=>{
     s += `${i+1}. ${t.titulo} (${NOM_PRIO[t.prioridad]})\n`;
-    s += t.decision ? `   ✅ ${t.decision}\n` : `   ▢ sin nota\n`;
-    (t.subtemas||[]).forEach(st=> s += `      ${st.hecho?'✔':'▢'} ${st.titulo}\n`);
+    s += t.decision ? `   - ${t.decision}\n` : `   - (sin nota)\n`;
+    (t.subtemas||[]).forEach(st=> s += `      ${st.hecho?'[x]':'[ ]'} ${st.titulo}\n`);
   });
-  s += `\n— Agenda Naka`;
+  s += `\n- Agenda Naka`;
   return s;
 }
 function compartirActa(id){
