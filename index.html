@@ -219,6 +219,12 @@
   .sheet button{flex:1;padding:12px;border-radius:12px;font-family:inherit;font-size:15px;font-weight:600;cursor:pointer;border:none}
   .btn-primary{background:var(--brand);color:#fff}
   .btn-ghost{background:#eceef1;color:var(--ink)}
+  .ed-puntos-lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);text-align:left;margin:8px 2px 7px}
+  .ed-punto{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+  .ed-punto input{flex:1;font-size:14px;padding:8px 10px;border:1px solid var(--line);border-radius:9px;font-family:inherit;outline:none;background:#fff;text-align:left;letter-spacing:normal;margin-bottom:0}
+  .ed-punto input:focus{border-color:var(--brand)}
+  .ed-punto-del{width:28px;height:28px;border:none;background:#eef0f2;border-radius:8px;color:#8a8f98;font-size:16px;cursor:pointer;flex-shrink:0}
+  .ed-add-punto{font-size:13px;color:var(--brand-dark);font-weight:500;background:none;border:none;cursor:pointer;font-family:inherit;padding:6px 2px;display:inline-block}
   .err{color:var(--alta);font-size:13px;margin-top:-8px;margin-bottom:10px;min-height:16px}
 
   .estado{font-size:11px;color:var(--muted);text-align:center;margin:18px 0 4px;opacity:.85}
@@ -815,26 +821,55 @@ function cardHtml(t, idx){
       </div>`;
 }
 
-/* ---------- Editar tema ---------- */
+/* ---------- Editar tema (título, descripción y puntos) ---------- */
+let edit = null;
 function editarTema(id){
   const t=temaById(id); if(!t) return;
+  edit = {
+    id,
+    titulo: t.titulo,
+    descripcion: t.detalle||"",
+    puntos: (t.subtemas||[]).map(s=>({id:s.id, titulo:s.titulo, hecho:!!s.hecho}))
+  };
+  renderEditModal();
+  showModal();
+  setTimeout(()=>{ const e=document.getElementById("edTit"); if(e) e.focus(); },100);
+}
+function capturarEdit(){
+  if(!edit) return;
+  const tit=document.getElementById("edTit"); if(tit) edit.titulo=tit.value;
+  const des=document.getElementById("edDet"); if(des) edit.descripcion=des.value;
+  edit.puntos.forEach((p,i)=>{ const inp=document.getElementById("edPt_"+i); if(inp) p.titulo=inp.value; });
+}
+function renderEditModal(){
+  const puntos = edit.puntos.map((p,i)=>`
+      <div class="ed-punto">
+        <input id="edPt_${i}" type="text" value="${esc(p.titulo)}" placeholder="Punto (se tilda)">
+        <button class="ed-punto-del" onclick="edBorrarPunto(${i})" aria-label="Quitar punto">×</button>
+      </div>`).join("");
   document.getElementById("sheetContent").innerHTML=`
     <h2>Editar tema</h2>
-    <input id="edTit" type="text" value="${esc(t.titulo)}" placeholder="Título del tema" style="font-size:15px;letter-spacing:normal;text-align:left;margin-bottom:10px">
-    <textarea id="edDet" placeholder="Detalle (opcional)" style="width:100%;border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-family:inherit;font-size:14px;resize:none;outline:none;margin-bottom:14px;min-height:72px;background:#fff;color:var(--ink)">${esc(t.detalle||"")}</textarea>
-    <div class="sheet-btns">
+    <input id="edTit" type="text" value="${esc(edit.titulo)}" placeholder="Título del tema" style="font-size:15px;letter-spacing:normal;text-align:left;margin-bottom:10px">
+    <textarea id="edDet" placeholder="Descripción (opcional)" style="width:100%;border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-family:inherit;font-size:14px;resize:none;outline:none;margin-bottom:8px;min-height:64px;background:#fff;color:var(--ink)">${esc(edit.descripcion)}</textarea>
+    <div class="ed-puntos-lbl">Puntos (se tildan)</div>
+    <div id="edPuntos">${puntos}</div>
+    <button class="ed-add-punto" onclick="edAgregarPunto()">+ agregar punto</button>
+    <div class="sheet-btns" style="margin-top:14px">
       <button class="btn-ghost" onclick="hideModal()">Cancelar</button>
-      <button class="btn-primary" id="edOk">Guardar</button>
+      <button class="btn-primary" onclick="edGuardar()">Guardar</button>
     </div>`;
-  showModal();
-  setTimeout(()=>document.getElementById("edTit").focus(),100);
-  document.getElementById("edOk").onclick=()=>{
-    const nt=document.getElementById("edTit").value.trim();
-    const nd=document.getElementById("edDet").value.trim();
-    if(!nt){ document.getElementById("edTit").focus(); return; }
-    t.titulo=nt; t.detalle=nd; hideModal(); render();
-    FB.updateDoc(fdoc(COL_TEMAS,id),{titulo:nt,detalle:nd});
-  };
+}
+function edAgregarPunto(){ capturarEdit(); edit.puntos.push({id:genId(), titulo:"", hecho:false}); renderEditModal(); const inp=document.getElementById("edPt_"+(edit.puntos.length-1)); if(inp) inp.focus(); }
+function edBorrarPunto(i){ capturarEdit(); edit.puntos.splice(i,1); renderEditModal(); }
+function edGuardar(){
+  capturarEdit();
+  const t=temaById(edit.id); if(!t) return;
+  const nt=(edit.titulo||"").trim();
+  if(!nt){ const e=document.getElementById("edTit"); if(e) e.focus(); return; }
+  const puntos = edit.puntos.map(p=>({id:p.id||genId(), titulo:(p.titulo||"").trim(), hecho:!!p.hecho})).filter(p=>p.titulo);
+  t.titulo=nt; t.detalle=(edit.descripcion||"").trim(); t.subtemas=puntos;
+  const eid=edit.id; edit=null; hideModal(); render();
+  FB.updateDoc(fdoc(COL_TEMAS,eid),{titulo:nt, detalle:t.detalle, subtemas:puntos});
 }
 
 /* ---------- Compartir acta por WhatsApp ---------- */
