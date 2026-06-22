@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --ink:#2b2f36; --muted:#8b9099; --line:#dfe2e6;
+    --ink:#2b2f36; --muted:#646b75; --line:#dfe2e6;
     --brand:#4b5563; --brand-dark:#374151;
     --glass:rgba(255,255,255,.72); --glass-soft:rgba(255,255,255,.55); --glass-line:rgba(255,255,255,.95);
     --alta:#e26d6d; --media:#cfa15a; --baja:#6fae84;
@@ -238,6 +238,16 @@
   .addbtn,.closebtn,.segui-btn,.chip,.tab{transition:transform .1s ease, background .15s ease}
   .addbtn:active,.closebtn:active,.segui-btn:active{transform:scale(.98)}
   @media (prefers-reduced-motion:reduce){*{animation:none!important}}
+
+  /* Accesibilidad: áreas táctiles, contraste y foco de teclado */
+  .del,.edit,.add-sub,.vermas,.detalle-toggle,.back{padding:5px 4px;display:inline-block;min-height:30px;line-height:20px}
+  .chip,.filtro-chip,.rb-chip,.vista-seg button{min-height:34px}
+  .check{width:26px;height:26px}
+  .subcheck{width:20px;height:20px}
+  .subdel{color:#8a8f98;font-size:18px;padding:4px 8px;min-height:30px}
+  .badge{min-height:24px;display:inline-flex;align-items:center}
+  .detalle-text{color:#4a4f57}
+  :focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:4px}
 </style>
 </head>
 <body>
@@ -245,7 +255,7 @@
 <header>
   <div class="wrap">
     <h1>Agenda <span>· Naka</span></h1>
-    <div class="whoami" id="whoami" onclick="cambiarNombre()"></div>
+    <div class="whoami" id="whoami" role="button" tabindex="0" aria-label="Tu nombre / sesión" onclick="cambiarNombre()"></div>
   </div>
 </header>
 
@@ -259,10 +269,10 @@
     <div class="reunion-box" id="reunionBox"></div>
 
     <div class="addbox">
-      <textarea id="nuevoTitulo" rows="2" placeholder="¿Qué tema querés tratar?"></textarea>
+      <textarea id="nuevoTitulo" rows="2" aria-label="Nuevo tema a tratar" placeholder="¿Qué tema querés tratar?"></textarea>
       <span class="detalle-toggle" onclick="toggleDetalleNuevo()" id="detalleToggle">+ detalle</span>
       <div class="detalle-wrap" id="detalleWrap">
-        <textarea id="nuevoDetalle" rows="2" placeholder="Ampliá el tema (opcional)"></textarea>
+        <textarea id="nuevoDetalle" rows="2" aria-label="Detalle del tema (opcional)" placeholder="Ampliá el tema (opcional)"></textarea>
       </div>
       <div class="row">
         <span class="label">Prioridad</span>
@@ -289,7 +299,7 @@
     </div>
 
     <div class="toolbar">
-      <input id="buscar" class="buscar" type="text" placeholder="🔍 Buscar tema…" oninput="setBusqueda(this.value)">
+      <input id="buscar" class="buscar" type="text" aria-label="Buscar tema" placeholder="🔍 Buscar tema…" oninput="setBusqueda(this.value)">
       <div id="vistaToggle"></div>
     </div>
     <div class="meta-row" id="counter"></div>
@@ -305,7 +315,7 @@
     <div id="histDetalle" class="hist-detail" style="display:none"></div>
   </div>
 
-  <div class="estado" id="estado">Conectando…</div>
+  <div class="estado" id="estado" role="status" aria-live="polite">Conectando…</div>
 </div>
 
 <div class="closebar" id="closebar">
@@ -314,7 +324,7 @@
   </div>
 </div>
 
-<div class="modal hidden" id="modal">
+<div class="modal hidden" id="modal" role="dialog" aria-modal="true" aria-label="Ventana de la agenda">
   <div class="sheet" id="sheetContent"></div>
 </div>
 
@@ -427,6 +437,12 @@ function setEstado(txt, off){
 }
 window.addEventListener("online",  ()=>setEstado("● Sincronizado en la nube", false));
 window.addEventListener("offline", ()=>setEstado("● Sin conexión (se guardará al volver)", true));
+// Accesibilidad: Enter/Espacio activan los elementos con rol (check, botón) que no son <button>.
+document.addEventListener("keydown", function(e){
+  const el=document.activeElement; if(!el || !el.getAttribute) return;
+  const role=el.getAttribute("role");
+  if((role==="checkbox"||role==="button") && (e.key==="Enter"||e.key===" ")){ e.preventDefault(); el.click(); }
+});
 
 /* ---------- PIN ---------- */
 function pedirPin(){
@@ -570,7 +586,7 @@ function renderCalendario(){
     <div class="cal">
       <div class="cal-head">
         <div class="cal-title">${MESES[calM]} ${calY}</div>
-        <div class="cal-nav"><button onclick="calMove(-1)">‹</button><button onclick="calMove(1)">›</button></div>
+        <div class="cal-nav"><button aria-label="Mes anterior" onclick="calMove(-1)">‹</button><button aria-label="Mes siguiente" onclick="calMove(1)">›</button></div>
       </div>
       <div class="cal-grid">${WD.map(w=>`<div class="cal-wd">${w}</div>`).join("")}${cells}</div>
       ${reuSet.size?`<div class="cal-legend"><i></i> día con reunión</div>`:''}
@@ -659,7 +675,7 @@ function render(){
 
   const nFilt = (filtroNombre?1:0)+(filtroPrioridad?1:0);
   document.getElementById("counter").innerHTML = total
-    ? `<span class="meta-count">${total} tema${total!=1?"s":""} · ${hechos} tratado${hechos!=1?"s":""}${totMin?` · ≈ ${minLabel(totMin)}`:""}</span><button class="btn-filtros ${nFilt?'on':''}" onclick="toggleFiltros()">Filtros${nFilt?` (${nFilt})`:""} ${filtrosAbiertos?"▴":"▾"}</button>`
+    ? `<span class="meta-count">${total} tema${total!=1?"s":""} · ${hechos} tratado${hechos!=1?"s":""}${totMin?` · ≈ ${minLabel(totMin)}`:""}</span><button class="btn-filtros ${nFilt?'on':''}" aria-expanded="${filtrosAbiertos?'true':'false'}" onclick="toggleFiltros()">Filtros${nFilt?` (${nFilt})`:""} ${filtrosAbiertos?"▴":"▾"}</button>`
     : "";
 
   renderFiltros();
@@ -758,9 +774,9 @@ function renderVistaToggle(){
   const c=document.getElementById("vistaToggle");
   if(!c) return;
   if(!state.temas.length){ c.innerHTML=""; return; }
-  c.innerHTML = `<div class="vista-seg">
-    <button class="${vistaModo==='lista'?'sel':''}" onclick="setVista('lista')">Lista</button>
-    <button class="${vistaModo==='tablero'?'sel':''}" onclick="setVista('tablero')">Tablero</button>
+  c.innerHTML = `<div class="vista-seg" role="group" aria-label="Vista de temas">
+    <button class="${vistaModo==='lista'?'sel':''}" aria-pressed="${vistaModo==='lista'}" onclick="setVista('lista')">Lista</button>
+    <button class="${vistaModo==='tablero'?'sel':''}" aria-pressed="${vistaModo==='tablero'}" onclick="setVista('tablero')">Tablero</button>
   </div>`;
 }
 function setVista(m){ vistaModo=m; localStorage.setItem("agenda_vista",m); animateNext=true; render(); }
@@ -772,7 +788,7 @@ function cardHtml(t, idx){
   return `
       <div class="card ${g} ${t.tratado?'done':''}" style="animation-delay:${Math.min(idx,10)*40}ms">
         <div class="card-top">
-          <div class="check ${t.tratado?'on':''}" id="chk_${t.id}" onclick="toggleTratado('${t.id}')">
+          <div class="check ${t.tratado?'on':''}" id="chk_${t.id}" role="checkbox" tabindex="0" aria-checked="${t.tratado?'true':'false'}" aria-label="Marcar tema como tratado" onclick="toggleTratado('${t.id}')">
             <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><path d="M5 12l5 5L20 6"/></svg>
           </div>
           <div style="flex:1">
