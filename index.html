@@ -844,14 +844,14 @@ function capturarEdit(){
 function renderEditModal(){
   const puntos = edit.puntos.map((p,i)=>`
       <div class="ed-punto">
-        <input id="edPt_${i}" type="text" value="${esc(p.titulo)}" placeholder="Punto (se tilda)">
+        <input id="edPt_${i}" type="text" value="${esc(p.titulo)}" placeholder="Punto">
         <button class="ed-punto-del" onclick="edBorrarPunto(${i})" aria-label="Quitar punto">×</button>
       </div>`).join("");
   document.getElementById("sheetContent").innerHTML=`
     <h2>Editar tema</h2>
     <input id="edTit" type="text" value="${esc(edit.titulo)}" placeholder="Título del tema" style="font-size:15px;letter-spacing:normal;text-align:left;margin-bottom:10px">
     <textarea id="edDet" placeholder="Descripción (opcional)" style="width:100%;border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-family:inherit;font-size:14px;resize:none;outline:none;margin-bottom:8px;min-height:64px;background:#fff;color:var(--ink)">${esc(edit.descripcion)}</textarea>
-    <div class="ed-puntos-lbl">Puntos (se tildan)</div>
+    <div class="ed-puntos-lbl">Puntos</div>
     <div id="edPuntos">${puntos}</div>
     <button class="ed-add-punto" onclick="edAgregarPunto()">+ agregar punto</button>
     <div class="sheet-btns" style="margin-top:14px">
@@ -1001,7 +1001,7 @@ function subtemasHtml(t){
         <span>${esc(s.titulo)}</span>
         <button class="subdel" onclick="borrarSub('${t.id}','${s.id}')">×</button>
       </div>`).join("")}
-    <span class="add-sub" onclick="addSub('${t.id}')">+ punto (se tilda)</span>
+    <span class="add-sub" onclick="addSub('${t.id}')">+ punto</span>
   </div>`;
 }
 function guardarSubtemas(tid, subs){ FB.updateDoc(fdoc(COL_TEMAS,tid),{subtemas:subs}); }
@@ -1016,7 +1016,7 @@ function borrarSub(tid,sid){
   guardarSubtemas(tid, t.subtemas);
 }
 function addSub(tid){
-  pedirTexto("Nuevo punto (se tilda)","Ej: pedir presupuesto a 3 proveedores",(txt)=>{
+  pedirTexto("Nuevo punto","Ej: pedir presupuesto a 3 proveedores",(txt)=>{
     const t=temaById(tid); if(!t) return;
     if(!t.subtemas) t.subtemas=[];
     t.subtemas=[...t.subtemas,{id:genId(),titulo:txt,hecho:false}]; render();
