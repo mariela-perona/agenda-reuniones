@@ -63,6 +63,10 @@
   .rb-chip.sel{background:var(--brand);color:#fff;border-color:transparent}
   .dur-sel{border:1px solid var(--line);background:#fff;border-radius:10px;padding:7px 11px;font-size:13px;font-family:inherit;color:var(--ink);outline:none;cursor:pointer}
   .dur-tag{font-size:11px;color:var(--muted);background:#eef0f2;border-radius:20px;padding:2px 8px;font-weight:500}
+  .conf-badge{font-size:10px;font-weight:600;background:#e7f1ea;color:#3f7a55;padding:2px 9px;border-radius:20px}
+  .confirmar-btn{display:block;width:100%;margin-top:13px;background:var(--brand);color:#fff;border:none;border-radius:11px;padding:11px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 2px 7px rgba(75,85,99,.25);transition:transform .1s ease}
+  .confirmar-btn:active{transform:scale(.98)}
+  .confirmar-btn.confirmada{background:#e7f1ea;color:#3f7a55;box-shadow:none}
 
   /* Calendario iOS */
   .cal{text-align:left}
@@ -412,6 +416,7 @@ function initFirestore(){
     state.duracionReunion = d.duracionReunion || "";
     state.ubicacion       = d.ubicacion || "";
     state.participantes   = d.participantes || [];
+    state.reunionConfirmada = !!d.reunionConfirmada;
     renderReunion();
   });
 }
@@ -484,6 +489,7 @@ function renderReunion(){
   box.innerHTML = `
     <div class="reunion-head">
       <span class="ico">📅</span><span class="reunion-title">Próxima reunión</span>
+      ${state.reunionConfirmada?'<span class="conf-badge">✓ confirmada</span>':""}
       ${cd?`<span class="countdown">${cd}</span>`:""}
     </div>
     <div class="reunion-grid">
@@ -510,7 +516,13 @@ function renderReunion(){
     <div class="rb-row">
       <span class="rb-lbl">Participantes</span>
       <div class="rb-chips">${PARTICIPANTES.map(p=>`<button class="rb-chip ${parts.includes(p)?'sel':''}" onclick="toggleParticipante('${p}')">${p}</button>`).join("")}</div>
-    </div>`;
+    </div>
+    <button class="confirmar-btn ${state.reunionConfirmada?'confirmada':''}" onclick="toggleConfirmar()">${state.reunionConfirmada?"✓ Reunión confirmada":"Confirmar reunión"}</button>`;
+}
+function toggleConfirmar(){
+  if(!state.reunionConfirmada && !state.fechaReunion){ alert("Primero elegí la fecha de la reunión."); return; }
+  const v=!state.reunionConfirmada;
+  state.reunionConfirmada=v; if(FB) FB.setDoc(cfgDoc(),{reunionConfirmada:v},{merge:true}); renderReunion();
 }
 function setReunion(field,val){ state[field]=val; if(FB) FB.setDoc(cfgDoc(),{[field]:val},{merge:true}); renderReunion(); }
 function setUbicacion(u){ setReunion("ubicacion", state.ubicacion===u? "" : u); }
