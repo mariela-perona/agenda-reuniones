@@ -524,12 +524,17 @@ function toggleConfirmar(){
   const v=!state.reunionConfirmada;
   state.reunionConfirmada=v; if(FB) FB.setDoc(cfgDoc(),{reunionConfirmada:v},{merge:true}); renderReunion();
 }
-function setReunion(field,val){ state[field]=val; if(FB) FB.setDoc(cfgDoc(),{[field]:val},{merge:true}); renderReunion(); }
+// Guarda cambios de la reunión y, si estaba confirmada, la desconfirma (el dato cambió).
+function guardarConfig(upd){
+  if(state.reunionConfirmada){ state.reunionConfirmada=false; upd.reunionConfirmada=false; }
+  if(FB) FB.setDoc(cfgDoc(),upd,{merge:true});
+}
+function setReunion(field,val){ state[field]=val; guardarConfig({[field]:val}); renderReunion(); }
 function setUbicacion(u){ setReunion("ubicacion", state.ubicacion===u? "" : u); }
 function toggleParticipante(p){
   let arr=state.participantes||[];
   arr = arr.includes(p)? arr.filter(x=>x!==p) : [...arr,p];
-  state.participantes=arr; if(FB) FB.setDoc(cfgDoc(),{participantes:arr},{merge:true}); renderReunion();
+  state.participantes=arr; guardarConfig({participantes:arr}); renderReunion();
 }
 
 function abrirCalendario(){
@@ -577,7 +582,7 @@ function renderCalendario(){
 }
 function elegirDia(ds){ state.fechaReunion=ds; hideModal(); guardarFecha(ds); renderReunion(); }
 function quitarFecha(){ state.fechaReunion=""; hideModal(); guardarFecha(""); renderReunion(); }
-function guardarFecha(v){ if(FB) FB.setDoc(cfgDoc(), {fechaReunion:v}, {merge:true}); }
+function guardarFecha(v){ guardarConfig({fechaReunion:v}); }
 
 /* ---------- Agregar ---------- */
 function selPrioridad(btn){
