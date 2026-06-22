@@ -45,6 +45,24 @@
   .fecha-btn{font-family:inherit;font-size:14px;border:1px solid var(--line);border-radius:10px;padding:7px 13px;background:#fff;color:var(--muted);cursor:pointer;font-weight:500}
   .fecha-btn.set{color:var(--ink);border-color:var(--brand)}
   .fechabar .countdown{margin-left:auto;font-size:11px;background:#5b6470;color:#fff;padding:5px 11px;border-radius:20px;font-weight:500}
+  .reunion-box{background:var(--glass-soft);border:1px solid var(--glass-line);backdrop-filter:blur(8px);border-radius:16px;padding:13px 14px;margin-bottom:16px;box-shadow:var(--shadow-soft)}
+  .reunion-head{display:flex;align-items:center;gap:8px;margin-bottom:11px}
+  .reunion-head .ico{font-size:16px;filter:grayscale(1)}
+  .reunion-title{font-size:13px;font-weight:600;color:var(--ink)}
+  .reunion-head .countdown{margin-left:auto;font-size:11px;background:#5b6470;color:#fff;padding:5px 11px;border-radius:20px;font-weight:500}
+  .reunion-grid{display:flex;gap:8px;flex-wrap:wrap}
+  .rb-field{flex:1;min-width:92px;display:flex;flex-direction:column;gap:3px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:7px 10px;text-align:left;font-family:inherit;cursor:pointer}
+  .rb-lbl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
+  .rb-val{font-size:13px;color:var(--muted);font-weight:500}
+  .rb-val.set{color:var(--ink)}
+  .rb-time,.rb-sel{border:none;background:none;font-family:inherit;font-size:13px;color:var(--ink);outline:none;padding:0;font-weight:500;width:100%}
+  .rb-row{display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap;margin-top:9px}
+  .rb-row > .rb-lbl{padding-top:6px;min-width:84px;flex-shrink:0}
+  .rb-chips{display:flex;gap:6px;flex-wrap:wrap;flex:1}
+  .rb-chip{border:1px solid var(--line);background:#fff;border-radius:20px;padding:5px 11px;font-size:12px;font-family:inherit;cursor:pointer;color:var(--muted);font-weight:500}
+  .rb-chip.sel{background:var(--brand);color:#fff;border-color:transparent}
+  .dur-sel{border:1px solid var(--line);background:#fff;border-radius:10px;padding:7px 11px;font-size:13px;font-family:inherit;color:var(--ink);outline:none;cursor:pointer}
+  .dur-tag{font-size:11px;color:var(--muted);background:#eef0f2;border-radius:20px;padding:2px 8px;font-weight:500}
 
   /* Calendario iOS */
   .cal{text-align:left}
@@ -234,12 +252,7 @@
   </div>
 
   <div id="view-prox">
-    <div class="fechabar">
-      <span class="ico">📅</span>
-      <label>Reunión:</label>
-      <button class="fecha-btn" id="fechaBtn" onclick="abrirCalendario()">Elegir fecha</button>
-      <span class="countdown" id="countdown"></span>
-    </div>
+    <div class="reunion-box" id="reunionBox"></div>
 
     <div class="addbox">
       <textarea id="nuevoTitulo" rows="2" placeholder="¿Qué tema querés tratar?"></textarea>
@@ -254,6 +267,19 @@
           <button class="chip p-media sel" data-p="media" onclick="selPrioridad(this)">Media</button>
           <button class="chip p-baja" data-p="baja" onclick="selPrioridad(this)">Baja</button>
         </div>
+      </div>
+      <div class="row">
+        <span class="label">Duración estimada</span>
+        <select class="dur-sel" id="durTema" onchange="durTemaSel=+this.value">
+          <option value="0">— sin estimar</option>
+          <option value="5">5 min</option>
+          <option value="10">10 min</option>
+          <option value="15">15 min</option>
+          <option value="20">20 min</option>
+          <option value="30">30 min</option>
+          <option value="45">45 min</option>
+          <option value="60">1 h</option>
+        </select>
       </div>
       <button class="addbtn" onclick="agregarTema()">Agregar tema</button>
     </div>
@@ -326,6 +352,9 @@
    CONFIG DEL EQUIPO
    ════════════════════════════════════════════════════════════════ */
 const NOMBRES = ["Diego","Hernan","Martin","Mariela"];
+const PARTICIPANTES = ["Diego","Hernan","Martín","Gonzalo","Sofia","Mariela"];
+const UBICACIONES = ["Arias","General Paz"];
+const DURS_REU = ["30 min","45 min","1 h","1 h 30","2 h","2 h 30","3 h"];
 const PIN_OK  = "1234";                      // <-- CAMBIAR por el PIN real del equipo
 
 const COL_TEMAS = "agenda_temas";
@@ -333,6 +362,7 @@ const COL_REU   = "agenda_reuniones";
 
 let FB = null;
 let prioridadSel = "media";
+let durTemaSel = 0;
 let state = { temas:[], reuniones:[], fechaReunion:"" };
 let yo = localStorage.getItem("agenda_nombre") || null;
 let animateNext = true;
@@ -376,8 +406,13 @@ function initFirestore(){
   });
 
   FB.onSnapshot(cfgDoc(), snap=>{
-    const v = snap.exists() ? (snap.data().fechaReunion||"") : "";
-    if(v!==state.fechaReunion){ state.fechaReunion = v; renderCountdown(); }
+    const d = snap.exists() ? snap.data() : {};
+    state.fechaReunion    = d.fechaReunion || "";
+    state.horaInicio      = d.horaInicio || "";
+    state.duracionReunion = d.duracionReunion || "";
+    state.ubicacion       = d.ubicacion || "";
+    state.participantes   = d.participantes || [];
+    renderReunion();
   });
 }
 
@@ -427,16 +462,62 @@ const MESES=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","
 const WD=["L","M","X","J","V","S","D"];
 function pad(n){ return String(n).padStart(2,"0"); }
 
-function renderCountdown(){
-  const btn=document.getElementById("fechaBtn");
-  const cd=document.getElementById("countdown");
-  if(!state.fechaReunion){ if(btn){btn.textContent="Elegir fecha";btn.classList.remove("set");} cd.textContent=""; return; }
+function fechaLinda(){
+  if(!state.fechaReunion) return "";
+  const [y,m,d]=state.fechaReunion.split("-");
+  return `${d}/${m}/${y}`;
+}
+function countdownTexto(){
+  if(!state.fechaReunion) return "";
   const [y,m,d]=state.fechaReunion.split("-").map(Number);
-  if(btn){ btn.textContent=`${pad(d)}/${pad(m)}/${y}`; btn.classList.add("set"); }
   const hoy=new Date(); hoy.setHours(0,0,0,0);
-  const f=new Date(y,m-1,d);
-  const dias=Math.round((f-hoy)/86400000);
-  cd.textContent = dias<0? `hace ${-dias} día${dias!=-1?"s":""}` : dias===0? "¡es hoy!" : dias===1? "mañana" : `faltan ${dias} días`;
+  const dias=Math.round((new Date(y,m-1,d)-hoy)/86400000);
+  return dias<0? `hace ${-dias} día${dias!=-1?"s":""}` : dias===0? "¡es hoy!" : dias===1? "mañana" : `faltan ${dias} días`;
+}
+function minLabel(m){ m=+m||0; if(!m) return ""; if(m<60) return m+" min"; const h=Math.floor(m/60), mm=m%60; return mm? h+" h "+mm : h+" h"; }
+
+function renderReunion(){
+  const box=document.getElementById("reunionBox");
+  if(!box) return;
+  const cd=countdownTexto();
+  const parts=state.participantes||[];
+  box.innerHTML = `
+    <div class="reunion-head">
+      <span class="ico">📅</span><span class="reunion-title">Próxima reunión</span>
+      ${cd?`<span class="countdown">${cd}</span>`:""}
+    </div>
+    <div class="reunion-grid">
+      <button class="rb-field" onclick="abrirCalendario()">
+        <span class="rb-lbl">Fecha</span>
+        <span class="rb-val ${state.fechaReunion?'set':''}">${fechaLinda()||"Elegir"}</span>
+      </button>
+      <div class="rb-field">
+        <span class="rb-lbl">Inicio</span>
+        <input type="time" class="rb-time" value="${state.horaInicio||""}" onchange="setReunion('horaInicio',this.value)">
+      </div>
+      <div class="rb-field">
+        <span class="rb-lbl">Duración</span>
+        <select class="rb-sel" onchange="setReunion('duracionReunion',this.value)">
+          <option value="" ${!state.duracionReunion?'selected':''}>—</option>
+          ${DURS_REU.map(x=>`<option value="${x}" ${state.duracionReunion===x?'selected':''}>${x}</option>`).join("")}
+        </select>
+      </div>
+    </div>
+    <div class="rb-row">
+      <span class="rb-lbl">Ubicación</span>
+      <div class="rb-chips">${UBICACIONES.map(u=>`<button class="rb-chip ${state.ubicacion===u?'sel':''}" onclick="setUbicacion('${u}')">${u}</button>`).join("")}</div>
+    </div>
+    <div class="rb-row">
+      <span class="rb-lbl">Participantes</span>
+      <div class="rb-chips">${PARTICIPANTES.map(p=>`<button class="rb-chip ${parts.includes(p)?'sel':''}" onclick="toggleParticipante('${p}')">${p}</button>`).join("")}</div>
+    </div>`;
+}
+function setReunion(field,val){ state[field]=val; if(FB) FB.setDoc(cfgDoc(),{[field]:val},{merge:true}); renderReunion(); }
+function setUbicacion(u){ setReunion("ubicacion", state.ubicacion===u? "" : u); }
+function toggleParticipante(p){
+  let arr=state.participantes||[];
+  arr = arr.includes(p)? arr.filter(x=>x!==p) : [...arr,p];
+  state.participantes=arr; if(FB) FB.setDoc(cfgDoc(),{participantes:arr},{merge:true}); renderReunion();
 }
 
 function abrirCalendario(){
@@ -482,8 +563,8 @@ function renderCalendario(){
       </div>
     </div>`;
 }
-function elegirDia(ds){ state.fechaReunion=ds; renderCountdown(); hideModal(); guardarFecha(ds); }
-function quitarFecha(){ state.fechaReunion=""; renderCountdown(); hideModal(); guardarFecha(""); }
+function elegirDia(ds){ state.fechaReunion=ds; hideModal(); guardarFecha(ds); renderReunion(); }
+function quitarFecha(){ state.fechaReunion=""; hideModal(); guardarFecha(""); renderReunion(); }
 function guardarFecha(v){ if(FB) FB.setDoc(cfgDoc(), {fechaReunion:v}, {merge:true}); }
 
 /* ---------- Agregar ---------- */
@@ -503,7 +584,7 @@ function agregarTema(){
   if(!t){ document.getElementById("nuevoTitulo").focus(); return; }
   const d = document.getElementById("nuevoDetalle").value.trim();
   const nuevo = {
-    titulo:t, detalle:d, prioridad:prioridadSel, propuestoPor:yo,
+    titulo:t, detalle:d, prioridad:prioridadSel, propuestoPor:yo, duracionEst:durTemaSel||0,
     tratado:false, decision:"", creadoEn:Date.now(),
     esSeguimiento:false, seguido:false, seguimiento:[], subtemas:[]
   };
@@ -511,6 +592,7 @@ function agregarTema(){
   document.getElementById("nuevoDetalle").value="";
   const w=document.getElementById("detalleWrap"); w.classList.remove("open");
   document.getElementById("detalleToggle").textContent="+ detalle";
+  durTemaSel=0; const dsel=document.getElementById("durTema"); if(dsel) dsel.value="0";
   animateNext=true;
   FB.addDoc(fcol(COL_TEMAS), nuevo);
 }
@@ -553,14 +635,14 @@ function render(){
     actualizarCloseBtn(); return;
   }
   document.getElementById("whoami").innerHTML = yo? `<span>👤</span><b>${yo}</b>` : `<span>👤 Elegir</span>`;
-  renderCountdown();
   const cont=document.getElementById("lista");
   const todos=state.temas;
   const total=todos.length, hechos=todos.filter(t=>t.tratado).length;
+  const totMin=todos.reduce((s,t)=>s+(+t.duracionEst||0),0);
 
   const nFilt = (filtroNombre?1:0)+(filtroPrioridad?1:0);
   document.getElementById("counter").innerHTML = total
-    ? `<span class="meta-count">${total} tema${total!=1?"s":""} · ${hechos} tratado${hechos!=1?"s":""}</span><button class="btn-filtros ${nFilt?'on':''}" onclick="toggleFiltros()">Filtros${nFilt?` (${nFilt})`:""} ${filtrosAbiertos?"▴":"▾"}</button>`
+    ? `<span class="meta-count">${total} tema${total!=1?"s":""} · ${hechos} tratado${hechos!=1?"s":""}${totMin?` · ≈ ${minLabel(totMin)}`:""}</span><button class="btn-filtros ${nFilt?'on':''}" onclick="toggleFiltros()">Filtros${nFilt?` (${nFilt})`:""} ${filtrosAbiertos?"▴":"▾"}</button>`
     : "";
 
   renderFiltros();
@@ -679,6 +761,7 @@ function cardHtml(t, idx){
           <div style="flex:1">
             <div class="meta meta-top">
               <span class="badge ${g}" onclick="ciclarPrioridad('${t.id}')">${NOM_PRIO[g]}</span>
+              ${t.duracionEst?`<span class="dur-tag">⏱ ${minLabel(t.duracionEst)}</span>`:""}
               <span class="by">${t.propuestoPor||"—"}</span>
               <button class="edit" onclick="editarTema('${t.id}')">editar</button>
               <button class="del" onclick="borrarTema('${t.id}')">borrar</button>
@@ -759,7 +842,7 @@ function cerrarReunion(){
       tratados.forEach(t=> batch.delete(fdoc(COL_TEMAS, t.id)) );
       batch.set(cfgDoc(), {fechaReunion:""}, {merge:true});
       batch.commit();
-      state.fechaReunion=""; renderCountdown();
+      state.fechaReunion=""; renderReunion();
       verTab('hist');
     });
 }
@@ -910,6 +993,7 @@ function esc(s){return (s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">"
 
 /* ---------- Init ---------- */
 render();
+renderReunion();
 window.addEventListener("firebase-ready", initFirestore);
 if(localStorage.getItem("agenda_pin_ok")!=="1") pedirPin();
 else if(!yo) pedirNombre();
