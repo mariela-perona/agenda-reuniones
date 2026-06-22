@@ -273,9 +273,9 @@
 
     <div class="addbox">
       <textarea id="nuevoTitulo" rows="2" aria-label="Nuevo tema a tratar" placeholder="¿Qué tema querés tratar?"></textarea>
-      <span class="detalle-toggle" onclick="toggleDetalleNuevo()" id="detalleToggle">+ detalle</span>
+      <span class="detalle-toggle" onclick="toggleDetalleNuevo()" id="detalleToggle">+ descripción</span>
       <div class="detalle-wrap" id="detalleWrap">
-        <textarea id="nuevoDetalle" rows="2" aria-label="Detalle del tema (opcional)" placeholder="Ampliá el tema (opcional)"></textarea>
+        <textarea id="nuevoDetalle" rows="2" aria-label="Descripción del tema (opcional)" placeholder="Descripción o contexto (texto, no se tilda)"></textarea>
       </div>
       <div class="row">
         <span class="label">Prioridad</span>
@@ -612,7 +612,7 @@ function selPrioridad(btn){
 function toggleDetalleNuevo(){
   const w=document.getElementById("detalleWrap");
   w.classList.toggle("open");
-  document.getElementById("detalleToggle").textContent = w.classList.contains("open")?"– detalle":"+ detalle";
+  document.getElementById("detalleToggle").textContent = w.classList.contains("open")?"– descripción":"+ descripción";
 }
 function agregarTema(){
   if(!FB){ alert("Todavía no está configurado Firebase."); return; }
@@ -627,7 +627,7 @@ function agregarTema(){
   document.getElementById("nuevoTitulo").value="";
   document.getElementById("nuevoDetalle").value="";
   const w=document.getElementById("detalleWrap"); w.classList.remove("open");
-  document.getElementById("detalleToggle").textContent="+ detalle";
+  document.getElementById("detalleToggle").textContent="+ descripción";
   durTemaSel=0; const dsel=document.getElementById("durTema"); if(dsel) dsel.value="0";
   animateNext=true;
   FB.addDoc(fcol(COL_TEMAS), nuevo);
@@ -912,7 +912,7 @@ function verReunion(id){
         <div class="titulo">${esc(t.titulo)}${t.esSeguimiento?'<span class="segui-badge">📌 seguimiento</span>':''}</div>
         ${t.detalle?`<div class="hist-label">Detalle</div><div class="hist-detalle">${esc(t.detalle)}</div>`:""}
         ${(t.seguimiento&&t.seguimiento.length)?`<div class="chain"><div class="chain-head" style="cursor:default">Historial previo</div><div class="chain-body open">${t.seguimiento.map(s=>`<div class="chain-row"><b>${s.fecha}:</b> ${esc(s.decision)}</div>`).join("")}</div></div>`:""}
-        ${(t.subtemas&&t.subtemas.length)?`<div class="hist-label">Subtemas</div><div class="subtemas">${t.subtemas.map(s=>`<div class="subtema ${s.hecho?'done':''}"><div class="subcheck ${s.hecho?'on':''}"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><path d="M5 12l5 5L20 6"/></svg></div><span>${esc(s.titulo)}</span></div>`).join("")}</div>`:""}
+        ${(t.subtemas&&t.subtemas.length)?`<div class="hist-label">Puntos</div><div class="subtemas">${t.subtemas.map(s=>`<div class="subtema ${s.hecho?'done':''}"><div class="subcheck ${s.hecho?'on':''}"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><path d="M5 12l5 5L20 6"/></svg></div><span>${esc(s.titulo)}</span></div>`).join("")}</div>`:""}
         <div class="hist-label">¿Qué se decidió?</div>
         ${t.decision?`<div class="hist-decision">${esc(t.decision)}</div>`:`<div class="hist-decision" style="border-color:#ddd;color:#9aa">Sin nota</div>`}
       </div>`).join("");
@@ -966,7 +966,7 @@ function subtemasHtml(t){
         <span>${esc(s.titulo)}</span>
         <button class="subdel" onclick="borrarSub('${t.id}','${s.id}')">×</button>
       </div>`).join("")}
-    <span class="add-sub" onclick="addSub('${t.id}')">+ subtema</span>
+    <span class="add-sub" onclick="addSub('${t.id}')">+ punto (se tilda)</span>
   </div>`;
 }
 function guardarSubtemas(tid, subs){ FB.updateDoc(fdoc(COL_TEMAS,tid),{subtemas:subs}); }
@@ -981,7 +981,7 @@ function borrarSub(tid,sid){
   guardarSubtemas(tid, t.subtemas);
 }
 function addSub(tid){
-  pedirTexto("Nuevo subtema","Ej: pedir presupuesto a 3 proveedores",(txt)=>{
+  pedirTexto("Nuevo punto (se tilda)","Ej: pedir presupuesto a 3 proveedores",(txt)=>{
     const t=temaById(tid); if(!t) return;
     if(!t.subtemas) t.subtemas=[];
     t.subtemas=[...t.subtemas,{id:genId(),titulo:txt,hecho:false}]; render();
