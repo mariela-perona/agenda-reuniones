@@ -121,7 +121,10 @@
   .btn-filtros{display:inline-flex;align-items:center;gap:5px;font-family:inherit;font-size:12px;font-weight:500;color:var(--muted);background:rgba(255,255,255,.6);border:1px solid var(--line);border-radius:20px;padding:5px 12px;cursor:pointer;white-space:nowrap}
   .btn-filtros.on{background:var(--brand);color:#fff;border-color:transparent}
   .filtros-wrap{margin-bottom:4px}
-  .edit{margin-left:auto;font-size:12px;color:var(--brand-dark);cursor:pointer;background:none;border:none;font-family:inherit}
+  .edit{margin-left:auto;cursor:pointer;background:none;border:none;font-family:inherit;color:var(--muted);display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;padding:0}
+  .edit svg,.del svg{width:18px;height:18px}
+  @media(hover:hover){.edit:hover{background:#eef0f2;color:var(--brand-dark)} .del:hover{background:#fbeaea;color:#b06a6a}}
+  .edit:active{color:var(--brand-dark)} .del:active{color:#b06a6a}
   .share-btn{display:inline-flex;align-items:center;gap:6px;background:#25d366;color:#fff;border:none;border-radius:11px;padding:10px 15px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:14px;box-shadow:0 2px 7px rgba(37,211,102,.3)}
   .share-btn:active{transform:scale(.98)}
   .vista-toggle{display:flex;justify-content:flex-end;margin:0 4px 12px}
@@ -160,7 +163,7 @@
   .badge{font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;cursor:pointer}
   .badge.alta{background:#fbeaea;color:#b04a4a} .badge.media{background:#f6efe2;color:#9a7530} .badge.baja{background:#e7f1ea;color:#3f7a55}
   .by{font-size:12px;color:var(--muted)}
-  .del{margin-left:auto;font-size:12px;color:#b06a6a;cursor:pointer;background:none;border:none;font-family:inherit}
+  .del{cursor:pointer;background:none;border:none;font-family:inherit;color:#9aa0a8;display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;padding:0}
   .decision{margin-top:10px;width:100%;border:1px dashed var(--line);border-radius:10px;padding:8px 10px;font-family:inherit;font-size:13px;resize:none;outline:none;color:var(--ink);background:#fff}
   .decision:focus{border-color:var(--brand);border-style:solid}
   .decision::placeholder{color:#aab0b8}
@@ -240,7 +243,7 @@
   @media (prefers-reduced-motion:reduce){*{animation:none!important}}
 
   /* Accesibilidad: áreas táctiles, contraste y foco de teclado */
-  .del,.edit,.add-sub,.vermas,.detalle-toggle,.back{padding:5px 4px;display:inline-block;min-height:30px;line-height:20px}
+  .add-sub,.vermas,.detalle-toggle,.back{padding:5px 4px;display:inline-block;min-height:30px;line-height:20px}
   .chip,.filtro-chip,.rb-chip,.vista-seg button{min-height:34px}
   .check{width:26px;height:26px}
   .subcheck{width:20px;height:20px}
@@ -796,8 +799,8 @@ function cardHtml(t, idx){
               <span class="badge ${g}" onclick="ciclarPrioridad('${t.id}')">${NOM_PRIO[g]}</span>
               ${t.duracionEst?`<span class="dur-tag">⏱ ${minLabel(t.duracionEst)}</span>`:""}
               <span class="by">${t.propuestoPor||"—"}</span>
-              <button class="edit" onclick="editarTema('${t.id}')">editar</button>
-              <button class="del" onclick="borrarTema('${t.id}')">borrar</button>
+              <button class="edit" aria-label="Editar tema" onclick="editarTema('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+              <button class="del" aria-label="Borrar tema" onclick="borrarTema('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>
             </div>
             <div class="titulo">${esc(t.titulo)}${t.esSeguimiento?'<span class="segui-badge">📌 seguimiento</span>':''}</div>
             ${t.detalle?`<span class="vermas" id="ver_${t.id}" onclick="toggleVerMas('${t.id}')">ver más</span>
