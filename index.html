@@ -214,6 +214,11 @@
   .sheet input{width:100%;text-align:center;font-size:22px;letter-spacing:6px;padding:12px;border:1px solid var(--line);border-radius:12px;font-family:inherit;outline:none;margin-bottom:14px;background:#fff}
   .sheet input:focus{border-color:var(--brand)}
   .sheet .who-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+  .who-avatars{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:6px}
+  .who-av{background:none;border:none;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 2px;border-radius:12px}
+  .who-av:hover{background:#f1f3f5}
+  .who-av-i{width:48px;height:48px;border-radius:50%;background:#e7ebf0;color:var(--brand);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:18px}
+  .who-av-n{font-size:12px;color:var(--ink);font-weight:500}
   .sheet .who-grid .chip{padding:12px;font-size:15px;justify-content:center}
   .sheet-btns{display:flex;gap:8px}
   .sheet button{flex:1;padding:12px;border-radius:12px;font-family:inherit;font-size:15px;font-weight:600;cursor:pointer;border:none}
@@ -374,7 +379,7 @@
 /* ════════════════════════════════════════════════════════════════
    CONFIG DEL EQUIPO
    ════════════════════════════════════════════════════════════════ */
-const NOMBRES = ["Diego","Hernan","Martin","Mariela"];
+const NOMBRES = ["Diego","Hernan","Martín","Gonzalo","Sofia","Mariela"];
 const PARTICIPANTES = ["Diego","Hernan","Martín","Gonzalo","Sofia","Mariela"];
 const UBICACIONES = ["Arias","General Paz"];
 const DURS_REU = ["30 min","45 min","1 h","1 h 30","2 h","2 h 30","3 h"];
@@ -474,9 +479,13 @@ function chequearPin(){
 /* ---------- Nombre ---------- */
 function pedirNombre(){
   document.getElementById("sheetContent").innerHTML = `
-    <h2>¿Quién sos?</h2>
-    <p>Para saber quién propone cada tema</p>
-    <div class="who-grid">${NOMBRES.map(n=>`<button class="chip who" onclick="setNombre('${n}')">${n}</button>`).join("")}</div>`;
+    <h2>Identificate</h2>
+    <p>Elegí tu nombre para entrar</p>
+    <div class="who-avatars">${NOMBRES.map(n=>`
+      <button class="who-av" onclick="setNombre('${n}')">
+        <span class="who-av-i">${esc(n.charAt(0))}</span>
+        <span class="who-av-n">${esc(n)}</span>
+      </button>`).join("")}</div>`;
   showModal();
 }
 function setNombre(n){ yo=n; localStorage.setItem("agenda_nombre",n); hideModal(); render(); }
