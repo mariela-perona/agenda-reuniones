@@ -379,8 +379,8 @@
 /* ════════════════════════════════════════════════════════════════
    CONFIG DEL EQUIPO
    ════════════════════════════════════════════════════════════════ */
-const NOMBRES = ["Diego","Hernan","Martín","Gonzalo","Sofia","Mariela"];
-const PARTICIPANTES = ["Diego","Hernan","Martín","Gonzalo","Sofia","Mariela"];
+const NOMBRES = ["Diego","Hernan","Martin","Gonzalo","Sofia","Mariela"];
+const PARTICIPANTES = ["Diego","Hernan","Martin","Gonzalo","Sofia","Mariela"];
 const UBICACIONES = ["Arias","General Paz"];
 const DURS_REU = ["30 min","45 min","1 h","1 h 30","2 h","2 h 30","3 h"];
 const PIN_OK  = "1234";                      // <-- CAMBIAR por el PIN real del equipo
@@ -904,8 +904,11 @@ function cerrarReunion(){
   const tratados = state.temas.filter(t=>t.tratado);
   if(!tratados.length) return;
   const pend = state.temas.length - tratados.length;
+  // Tratados con puntos pendientes (y que no se hicieron seguimiento a mano) -> se arrastran solos.
+  const arrastrar = tratados.filter(t=>!t.seguido && (t.subtemas||[]).some(s=>!s.hecho));
   confirmar(
     `Se archivarán ${tratados.length} tema${tratados.length!=1?"s":""} tratado${tratados.length!=1?"s":""} en el historial.` +
+    (arrastrar.length?`<br>${arrastrar.length} con puntos pendientes pasan a la próxima como seguimiento.`:"") +
     (pend?`<br>Los ${pend} pendiente${pend!=1?"s":""} pasan a la próxima reunión.`:""),
     "Cerrar reunión",
     ()=>{
@@ -920,6 +923,17 @@ function cerrarReunion(){
       const ref = FB.doc(fcol(COL_REU));
       batch.set(ref, reunion);
       tratados.forEach(t=> batch.delete(fdoc(COL_TEMAS, t.id)) );
+      // Arrastrar a la próxima reunión los tratados con puntos pendientes (seguimiento automático).
+      arrastrar.forEach((t,i)=>{
+        const nref = FB.doc(fcol(COL_TEMAS));
+        batch.set(nref, {
+          titulo:t.titulo, detalle:t.detalle||"", prioridad:t.prioridad, propuestoPor:t.propuestoPor,
+          tratado:false, decision:"", creadoEn:Date.now()+i,
+          esSeguimiento:true, seguido:false,
+          seguimiento:[...(t.seguimiento||[]), {fecha:fechaTxt, decision:t.decision||"(sin nota)"}],
+          subtemas:(t.subtemas||[]).filter(s=>!s.hecho).map(s=>({id:genId(), titulo:s.titulo, hecho:false}))
+        });
+      });
       batch.set(cfgDoc(), {fechaReunion:""}, {merge:true});
       batch.commit();
       state.fechaReunion=""; renderReunion();
