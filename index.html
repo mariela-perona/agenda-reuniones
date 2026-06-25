@@ -235,6 +235,11 @@
   .ed-add-punto{font-size:13px;color:var(--brand-dark);font-weight:500;background:none;border:none;cursor:pointer;font-family:inherit;padding:6px 2px;display:inline-block}
   .err{color:var(--alta);font-size:13px;margin-top:-8px;margin-bottom:10px;min-height:16px}
 
+  .toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#2b2f36;color:#fff;border-radius:12px;padding:11px 16px;font-size:13px;display:flex;align-items:center;gap:14px;z-index:60;box-shadow:0 8px 24px rgba(0,0,0,.25);max-width:90vw}
+  .toast.hidden{display:none}
+  .toast button{background:none;border:none;color:#7fd6a8;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;padding:0}
+  .acta-btns{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+  .copiar-btn{display:inline-flex;align-items:center;gap:6px;background:#eceef1;color:var(--ink);border:none;border-radius:11px;padding:10px 15px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer}
   .estado{font-size:11px;color:var(--muted);text-align:center;margin:18px 0 4px;opacity:.85}
   .estado.off{color:var(--alta);opacity:1}
 
@@ -340,6 +345,8 @@
     <button class="closebtn" id="closebtn" onclick="cerrarReunion()">Cerrar reunión y archivar</button>
   </div>
 </div>
+
+<div class="toast hidden" id="toast"></div>
 
 <div class="modal hidden" id="modal" role="dialog" aria-modal="true" aria-label="Ventana de la agenda">
   <div class="sheet" id="sheetContent"></div>
@@ -673,10 +680,20 @@ function ciclarPrioridad(id){
   FB.updateDoc(fdoc(COL_TEMAS,id),{prioridad:x.prioridad});
 }
 function borrarTema(id){
-  confirmar("¿Borrar este tema?","Borrar",()=>{
-    state.temas=state.temas.filter(t=>t.id!==id); render();
-    FB.deleteDoc(fdoc(COL_TEMAS,id));
-  });
+  const t=temaById(id); if(!t) return;
+  const copia={...t}; delete copia.id;       // guardo el contenido para poder deshacer
+  state.temas=state.temas.filter(x=>x.id!==id); render();
+  FB.deleteDoc(fdoc(COL_TEMAS,id));
+  mostrarToast("Tema borrado", "Deshacer", ()=>{ if(FB) FB.addDoc(fcol(COL_TEMAS), copia); });
+}
+let toastTimer=null;
+function mostrarToast(msg, accionTxt, accionCb){
+  const el=document.getElementById("toast"); if(!el) return;
+  el.innerHTML = `<span>${esc(msg)}</span>${accionTxt?`<button id="toastAccion">${esc(accionTxt)}</button>`:""}`;
+  el.classList.remove("hidden");
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.add("hidden"), 6000);
+  if(accionTxt){ const b=document.getElementById("toastAccion"); if(b) b.onclick=()=>{ clearTimeout(toastTimer); el.classList.add("hidden"); if(accionCb) accionCb(); }; }
 }
 function toggleVerMas(id){
   const el=document.getElementById("det_"+id); const lk=document.getElementById("ver_"+id);
@@ -831,7 +848,7 @@ function cardHtml(t, idx){
             ${subtemasHtml(t)}
             <textarea class="decision" placeholder="¿Qué se decidió? (se guarda en el acta)"
               oninput="setDecision('${t.id}',this.value)">${esc(t.decision)}</textarea>
-            <button class="seguir-btn ${t.seguir?'on':''}" onclick="toggleSeguir('${t.id}')">${t.seguir?'✓ Pasa a la próxima reunión':'↻ Pasar a la próxima reunión'}</button>
+            ${t.tratado?`<button class="seguir-btn ${t.seguir?'on':''}" onclick="toggleSeguir('${t.id}')">${t.seguir?'✓ Pasa a la próxima reunión':'↻ Pasar a la próxima reunión'}</button>`:""}
           </div>
         </div>
       </div>`;
@@ -902,8 +919,16 @@ function actaTexto(r){
 function compartirActa(id){
   const r=state.reuniones.find(x=>x.id===id); if(!r) return;
   const txt=actaTexto(r);
-  // Abre WhatsApp directo: app en el celular, WhatsApp Web en la compu.
+  // Respaldo: copio al portapapeles por si el link de WhatsApp es muy largo y se corta.
+  if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).catch(()=>{}); }
   window.open("https://wa.me/?text="+encodeURIComponent(txt), "_blank");
+}
+function copiarActa(id){
+  const r=state.reuniones.find(x=>x.id===id); if(!r) return;
+  const txt=actaTexto(r);
+  const done=()=>{ const b=document.getElementById("copiarBtn"); if(b){ b.textContent="✓ Copiada"; setTimeout(()=>{ if(b) b.textContent="📋 Copiar acta"; },1800); } };
+  if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(done).catch(()=>mostrarToast("No se pudo copiar","",null)); }
+  else { mostrarToast("Tu navegador no permite copiar automáticamente","",null); }
 }
 
 /* ---------- Cerrar reunión ---------- */
@@ -970,7 +995,10 @@ function verReunion(id){
   const d=document.getElementById("histDetalle"); d.style.display="block";
   d.innerHTML = `<span class="back" onclick="renderHist()">‹ Volver al historial</span>
     <h2 style="font-size:17px;margin:4px 0 12px">Reunión ${r.fecha}</h2>
-    <button class="share-btn" onclick="compartirActa('${r.id}')">📲 Compartir acta por WhatsApp</button>` +
+    <div class="acta-btns">
+      <button class="share-btn" onclick="compartirActa('${r.id}')">📲 Compartir por WhatsApp</button>
+      <button class="copiar-btn" id="copiarBtn" onclick="copiarActa('${r.id}')">📋 Copiar acta</button>
+    </div>` +
     r.temas.map(t=>`
       <div class="card ${t.prioridad}">
         <div class="meta meta-top"><span class="badge ${t.prioridad}">${NOM_PRIO[t.prioridad]}</span><span class="by">${t.propuestoPor||"—"}</span></div>
