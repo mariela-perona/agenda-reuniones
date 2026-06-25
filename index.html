@@ -454,6 +454,10 @@ function setEstado(txt, off){
 }
 window.addEventListener("online",  ()=>setEstado("● Sincronizado en la nube", false));
 window.addEventListener("offline", ()=>setEstado("● Sin conexión (se guardará al volver)", true));
+// Avisa si una escritura a Firebase falla de verdad (permiso, cuota, etc.).
+window.addEventListener("unhandledrejection", function(){
+  setEstado("⚠ No se pudo guardar el último cambio — revisá la conexión", true);
+});
 // Accesibilidad: Enter/Espacio activan los elementos con rol (check, botón) que no son <button>.
 document.addEventListener("keydown", function(e){
   const el=document.activeElement; if(!el || !el.getAttribute) return;
@@ -768,7 +772,7 @@ function renderFiltros(){
   let chips = `<button class="filtro-chip ${!filtroNombre?'sel':''}" onclick="setFiltro('')">Todos</button>`;
   NOMBRES.forEach(n=>{
     const cnt = state.temas.filter(t=>t.propuestoPor===n).length;
-    if(!cnt) return;
+    if(!cnt && n!==filtroNombre) return;
     chips += `<button class="filtro-chip ${filtroNombre===n?'sel':''}" onclick="setFiltro('${n}')">${n} (${cnt})</button>`;
   });
   cont.innerHTML = chips;
@@ -782,7 +786,7 @@ function renderFiltrosPrio(){
   let chips = `<button class="filtro-chip ${!filtroPrioridad?'sel':''}" onclick="setFiltroPrio('')">Todas</button>`;
   ["alta","media","baja"].forEach(p=>{
     const cnt = base.filter(t=>t.prioridad===p).length;
-    if(!cnt) return;
+    if(!cnt && p!==filtroPrioridad) return;
     chips += `<button class="filtro-chip ${filtroPrioridad===p?'sel':''}" onclick="setFiltroPrio('${p}')"><span class="pdot ${p}"></span>${NOM_PRIO[p]} (${cnt})</button>`;
   });
   cont.innerHTML = chips;
@@ -937,9 +941,9 @@ function cerrarReunion(){
           subtemas:(t.subtemas||[]).filter(s=>!s.hecho).map(s=>({id:genId(), titulo:s.titulo, hecho:false}))
         });
       });
-      batch.set(cfgDoc(), {fechaReunion:""}, {merge:true});
+      batch.set(cfgDoc(), {fechaReunion:"", reunionConfirmada:false}, {merge:true});
       batch.commit();
-      state.fechaReunion=""; renderReunion();
+      state.fechaReunion=""; state.reunionConfirmada=false; renderReunion();
       verTab('hist');
     });
 }
